@@ -1,28 +1,35 @@
 # syntax=docker/dockerfile:1
-# the build is very intense and takes at least an hour to complete.
-# if you want to speed things up you can comment out the two shell scripts, crossdev.sh and distcc.sh, and run them manually later.
 FROM gentoo/stage3:amd64
+
+# Copy the config files
 COPY src/etc/portage/make.conf /etc/portage/make.conf
-COPY src/etc/conf.d/distccd.template /etc/conf.d/distccd.template
+COPY src/etc/conf.d/distccd.conf /etc/conf.d/distccd.conf
 COPY src/root/crossdev.sh /root/crossdev.sh
 COPY src/root/distcc.sh /root/distcc.sh
 
+# Get recent version of portage snapshot
 RUN emerge-webrsync
 
-# RUN echo "sys-kernel/linux-firmware linux-fw-redistributable no-source-code" > /etc/portage/package.license
-# RUN emerge sys-kernel/linux-firmware
-
+# Compile and install the kernel.
 RUN emerge sys-kernel/installkernel-gentoo
 RUN emerge sys-kernel/gentoo-kernel-bin
-RUN emerge --prune sys-kernel/gentoo-kernel sys-kernel/gentoo-kernel-bin
 
-RUN emerge sys-devel/crossdev
-RUN emerge sys-devel/distcc
+# Build the tools we need
+RUN emerge sys-devel/crossdev sys-devel/distcc app-portage/gentoolkit
 
-# comment these to dramatically speed the build process.
+# Run the scripts inside to container that we copied earlier.
 RUN sh /root/crossdev.sh
 RUN sh /root/distcc.sh
 
-RUN emerge --prune sys-devel/distcc sys-devel/crossdev
+# Try to clean packages and distfiles nicely
+RUN eclean-dist --deep
+RUN eclean-pkg --deep
+RUN emerge --depclean --with-bdeps=y
 
+# Dramatic measure to reduce around 1GB of unpacked image size, handle with care and use only if you know what you are removing and how to fix it.
+#RUN rm -fr /var/cache/distfiles/*
+#RUN rm -fr /var/db/repos/gentoo/
+
+EXPOSE 3632
+# Just run the init to start everything that is needed.
 CMD [ "/sbin/init" ]
