@@ -6,22 +6,24 @@ When building with docker it's recommended to leave `FEATURES` as is, because po
 
 ### Build arguments, default values and syntax
 
-ARG list for make.conf:
+Default ARGs for make.conf:
 
 - `MARCH="-march=skylake"`
 - `FEATURES="-ipc-sandbox -network-sandbox -pid-sandbox"`
 - `MAKEOPTS="-j4"`
 - `USE="-filecaps bindist"`
 
-ARG list for building the crossdev toolchain:
+Default ARGs for crossdev:
 
-- `BINUTILS_VER="=2.35.2"`
-- `GCC_VER="~10.2.0"`
-- `KERNEL_VER="~5.10"`
-- `LIBC_VER="~2.32"`
+- `BINUTILS_VER="2.37_p1"`
+- `GCC_VER="~11.2.0"`
+- `KERNEL_VER="5.10-r1"`
+- `LIBC_VER="2.33-r7"`
 - `TARGET_CHOST="armv6j-unknown-linux-gnueabihf"`
 
 ### Build example
+
+Override arguments by passing `--build-arg VAR=val` to `docker build` command.
 
 ```
 docker build --pull -t gentoo-cross-distcc:armv6j \
@@ -29,32 +31,32 @@ docker build --pull -t gentoo-cross-distcc:armv6j \
 --build-arg MAKEOPTS="-j16" .
 ```
 
-## Usage
+## Running
 
-### Runtime ENV variables
+Default environment variables are:
 
 - `PORT="3632"`
+- `STATS_PORT="3633"`
 - `LOGLEVEL="warning"`
 - `ALLOW="172.17.0.0/16"`
 - `NICE="15"`
 
-Run the image and forward the distcc port from container to host as needed, for example:
+Substitute defaults by passing `--env VAR=val` or `-e VAR=val` to `docker run`. If you change the default ports, don't forget to expose them with `--expose`.
+
+For example:
 
 ```
-docker run -d -p 3632:3632 --name distccd-armv6j \
--e LOGLEVEL="debug" \
--e ALLOW="10.100.1.0/24" \
-gentoo-cross-distcc:armv6j`
+docker run -d -p 1234:1234 --name distccd-armv6j \
+--expose 1234 --env PORT="1234" --env ALLOW="10.100.1.0/24" \
+gentoo-cross-distcc:armv6j
 ```
 
-## TODO
-
-- finish this readme
-- tidy up the Dockerfile
+The above command starts the container as detached `-d`, publishes port 1234 from host to container `-p host:cont`, sets its name to distccd-armv6j `--name name`, exposes port 1234 from the container to the host `--expose port`, sets environment values PORT and ALLOW `--env var=val` from image named `gentoo-cross-distcc:armv6j`.
 
 ## Known issues
 
-- only one ALLOW is currently supported.
-- Dockerfile exposes only the default port 3632. If using other than default port, you need to take this into account when running the container.
-- Building is very slow, since the crossdev toolchain is built along with the docker image.
-- Image is still quite big, around 1.15 GB
+- Building is slow and the image is quite big, around 1.8 GB
+
+## TODO
+
+- Nothing major.
